@@ -15,6 +15,8 @@ import android.widget.TextView;
 import com.polidea.rxandroidble2.RxBleAdapterStateObservable;
 import com.polidea.rxandroidble2.RxBleDevice;
 
+import java.util.HashMap;
+
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
@@ -50,6 +52,8 @@ public class MainActivity extends AppCompatActivity {
     DoppyManager mDoppyManager;
 
     Disposable mScanDisposable;
+
+    HashMap<String, Integer> mFilterScan;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -124,10 +128,15 @@ public class MainActivity extends AppCompatActivity {
 
     @OnClick(R.id.scan_button)
     public void onScanClicked() {
+        mFilterScan = new HashMap<>(10);
         mAdapter.clear();
         mScanDisposable = mDoppyManager.scan()
                 .subscribeOn(Schedulers.io())
+                .filter(scanResult -> !mFilterScan.containsKey(scanResult.getBleDevice().getMacAddress()))
                 .map(scanResult -> {
+                    // Add to the scanned list, to avoid displaying already scanned device
+                    mFilterScan.put(scanResult.getBleDevice().getMacAddress(), 1);
+
                     Log.d("test", "onScanClicked: " + scanResult.getBleDevice().getName() + " -> " + scanResult.toString());
                     BluetoothDeviceData bluetoothDeviceData = new BluetoothDeviceData();
                     bluetoothDeviceData.bleDevice = scanResult.getBleDevice();
@@ -174,7 +183,6 @@ public class MainActivity extends AppCompatActivity {
                  */
                 .subscribe(o -> {}, Throwable::printStackTrace, () -> {Log.e("test", "completed");});
         mRxDisposable.add(disposable);
-
 
         connectionStateChangesSubscription = mDoppyManager.observeConnectionStateChanged()
                 .subscribeOn(Schedulers.io())
